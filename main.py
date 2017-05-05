@@ -10,8 +10,11 @@ from torch.autograd import Variable
 import matplotlib.pyplot as plt 
 import PIL
 import numpy as np
+from dataset_imagenet import ImageNet
 
-confMat = np.zeros((10,10),dtype=int)
+from torchvision import utils
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -40,34 +43,27 @@ if args.cuda:
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 train_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../data', train=True, download=True,
-                   transform=transforms.Compose([
-                       transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,)),
-                   ])),
-    batch_size=args.batch_size, shuffle=True, **kwargs)
+    ImageNet('data', train=True,transform =transforms.ToTensor()), batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../data', train=False, transform=transforms.Compose([
-                       transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,))
-                   ])),
+    ImageNet('data', train=False, transform =transforms.ToTensor()),
     batch_size=args.batch_size, shuffle=True, **kwargs)
 
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 15, kernel_size=5)
-        self.conv2 = nn.Conv2d(15, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
+        self.conv1 = nn.Conv3d(1, 15, kernel_size=5)
+        self.conv2 = nn.Conv3d(15, 20, kernel_size=5)
+        self.conv2_drop = nn.Dropout3d()
         self.fc1 = nn.Linear(320, 200)
         self.fc2 = nn.Linear(200,100)
         self.fc3 = nn.Linear(100, 50)
         self.fc4 = nn.Linear(50, 10)
 
     def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2)) 
+        show(x[0].data,'asdf')
+        x = F.relu(F.max_pool3d(self.conv1(x), 2))
+        x = F.relu(F.max_pool3d(self.conv2_drop(self.conv2(x)), 2)) 
         x = x.view(-1, 320)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
@@ -88,9 +84,6 @@ def train(epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.cuda:
             data, target = data.cuda(), target.cuda()
-        for i in range(len(target)):
-            if randomize and random.uniform(0,1) < rChance:
-                target[i] = random.randint(0,9)
         data, target = Variable(data), Variable(target)        
         optimizer.zero_grad() 
         output = model(data)
@@ -118,11 +111,7 @@ def test(epoch):
 
         # Show example of the dataset
         if idx == 0 and showSample:
-            imgshow(data,'Predicted: {}, Target: {}'.format(int(pred[0].numpy()),int(target[0].data.numpy())))##        
-        #Generate confusion matrix
-        if epoch == args.epochs:
-            for p,t in zip(pred.view(-1),target.data):
-                confMat[int(t),int(p)] = confMat[int(t),int(p)]+1
+            show(data,'Predicted: {}, Target: {}'.format(int(pred[0].numpy()),int(target[0].data.numpy())))##        
 
     test_loss = test_loss
     test_loss /= len(test_loader) # loss function already averages over batch size
@@ -131,15 +120,11 @@ def test(epoch):
         100. * correct / len(test_loader.dataset)))
 
 
-def imgshow(imgtensor,title):##
-    imgtensor =  imgtensor[0,:,:,:]
-    imgtensor = imgtensor.data
-    imgtensor = imgtensor + imgtensor.min()
-    img = imgtensor.numpy()
-    plt.imshow(img[0])
+def show(img,title=''):
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
     plt.title(title)
     plt.show()
-
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     test(epoch)

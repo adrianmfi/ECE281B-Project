@@ -1,21 +1,17 @@
 from __future__ import print_function
 import torch.utils.data as data
 import torch
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToPILImage
 from PIL import Image
 import numpy as np
 import csv
 import os
 import glob
+import operator
 
-from torchvision import utils
 import matplotlib.pyplot as plt
-import numpy as np
-def show(img):
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
 
-class imageNet(data.Dataset):
+class ImageNet(data.Dataset):
     raw_folder = 'raw'
     processed_folder = 'processed'
     training_file = 'training.pt'
@@ -27,10 +23,7 @@ class imageNet(data.Dataset):
         self.train = train  # training set or test set
 
         if not self._check_exists():
-            try:
-                self.generateTorchFile()
-            except:
-                raise RuntimeError('Unable to use generate torch file')
+            self.generateTorchFile()
 
         if self.train:
             self.train_data, self.train_labels = torch.load(
@@ -45,8 +38,9 @@ class imageNet(data.Dataset):
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
-        img = Image.fromarray(img.numpy(), mode='L')
-
+        tf = ToPILImage()
+        img = tf(img)
+        
         if self.transform is not None:
             img = self.transform(img)
 
@@ -65,25 +59,27 @@ class imageNet(data.Dataset):
         return os.path.exists(os.path.join(self.root, self.processed_folder, self.training_file)) and \
             os.path.exists(os.path.join(self.root, self.processed_folder, self.test_file))
 
-    def generateTorchFile(root,raw_folder,processed_folder,training_file,test_file):
+    def generateTorchFile(self):
         print('Processing..')
-        '''Convert dataset folder into pytorch format'''
+        '''Convert dataset/raw folder into pytorch format and save into dataset/processed as .pt files'''
         training_set = (
-            read_image_folder(os.path.join(root, raw_folder, 'train/images/')),
-            read_label_file(os.path.join(root, raw_folder, 'train/train_labels.csv'))
+            read_image_folder(os.path.join(self.root, self.raw_folder, 'train/images/')),
+            read_label_file(os.path.join(self.root, self.raw_folder, 'train/train_labels.csv'))
         )
         test_set = (
-            read_image_folder(os.path.join(root, raw_folder, 'test/images/')),
+            read_image_folder(os.path.join(self.root, self.raw_folder, 'test/images/')),
             #read_label_file(os.path.join(root, raw_folder, 'test-labels'))
             torch.LongTensor(10000)
         )
-        with open(os.path.join(root, processed_folder, training_file), 'wb') as f:
+        if not os.path.exists(os.path.join(self.root, self.processed_folder)):
+            os.makedirs(os.path.join(self.root, self.processed_folder))
+        with open(os.path.join(self.root, self.processed_folder, self.training_file), 'wb') as f:
             torch.save(training_set, f)
-        with open(os.path.join(root, processed_folder, test_file), 'wb') as f:
+        with open(os.path.join(self.root, self.processed_folder, self.test_file), 'wb') as f:
             torch.save(test_set, f)
         print('Done')
 
-
+# Should probabaly make sure labels and pictures match..
 def read_label_file(path):
     '''Load the labels into a long tensor'''
     labels = []
@@ -91,26 +87,29 @@ def read_label_file(path):
     #Skip first line, containing text
     next(reader)    
     #sortedList = sorted(reader,key=lambda row: row[0],reverse = False)
-    for name,label in reader:
+    for name,label in sorted(reader,key=operator.itemgetter(0)):
         labels.append(int(label))
     return torch.LongTensor(labels)
 
-
 def read_image_folder(path):
-    '''Load all images in path into tensor'''
+    '''Load all images in path folder into tensor'''
     images = []
-    tensorTransform = ToTensor()
-    for filename in glob.glob(path+'*.JPEG'): 
+    for filename in sorted(glob.glob(path+'*.JPEG')): 
         im=Image.open(filename)
-        imTensor = tensorTransform(im)
-        images.append(imTensor)
-    #return torch.ByteTensor(images).view(-1, 3, 56,56)
-    return images
+        im = np.array(im.getdata(),dtype = np.uint8).reshape(-1,56,56)
+        #Some of the images only have 1 channel?
+        if (im.shape[0] == 3):
+            images.append(im)
+        else:
+            imcolor= np.concatenate((im,im,im),axis = 0)
+            images.append(imcolor)
+    return torch.ByteTensor(np.array(images)) #Convert to HWC
+    #return images
+
 if __name__ == '__main__':
     #read_label_file('data/raw/train/train_labels.csv')
     #read_image_folder('data/raw/train/images/')
     #generateTorchFile('data','raw','processed','training.pt','test.pt')
-    net = imageNet('data')
-    print(net[0])
-    show(utils.make_grid(net[0]))
-    plt.show()
+    net = ImageNet('data')
+    imgs,labels = net[0:3]
+    print( imgs)
