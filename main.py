@@ -45,35 +45,64 @@ if args.cuda:
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 train_loader = torch.utils.data.DataLoader(
-    ImageNet('data', train=True,transform =transforms.ToTensor()), batch_size=args.batch_size, shuffle=True, **kwargs)
+    ImageNet('data', train=True,transform =transforms.ToTensor()), 
+    batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
     ImageNet('data', train=False, transform =transforms.ToTensor()),
     batch_size=args.batch_size, shuffle=True, **kwargs)
 
-
+'''
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv3d(1, 15, kernel_size=5)
-        self.conv2 = nn.Conv3d(15, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout3d()
-        self.fc1 = nn.Linear(320, 200)
-        self.fc2 = nn.Linear(200,100)
-        self.fc3 = nn.Linear(100, 50)
-        self.fc4 = nn.Linear(50, 10)
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 66, kernel_size=11, stride=2, padding=2),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(66, 192, kernel_size=5, padding=2),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(192, 384, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(384, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+        )
+        self.classifier = nn.Sequential(
+            nn.Dropout(),
+            nn.Linear(65536, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, 4096),
+            nn.ReLU(inplace=True),
+            nn.Linear(4096, 100),
+            #nn.LogSoftmax()
+        )
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(-1, 65536)
+        x = self.classifier(x)
+        return x
+'''
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(3, 10, kernel_size=5)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        self.conv2_drop = nn.Dropout2d()
+        self.fc1 = nn.Linear(20*11*11, 50)
+        self.fc2 = nn.Linear(50, 100)
 
     def forward(self, x):
-        x = F.relu(F.max_pool3d(self.conv1(x), 2))
-        x = F.relu(F.max_pool3d(self.conv2_drop(self.conv2(x)), 2)) 
-        x = x.view(-1, 320)
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = x.view(-1, 20*11*11)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.fc2(x))
-        x = F.dropout(x,training=self.training)
-        x = F.relu(self.fc3(x))
-        x = self.fc4(x)
+        x = self.fc2(x)
         return F.log_softmax(x)
-
 model = Net()
 if args.cuda:
     model.cuda()
@@ -85,7 +114,7 @@ def train(epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.cuda:
             data, target = data.cuda(), target.cuda()
-        data, target = Variable(data), Variable(target)        
+        data, target = Variable(data), Variable(target)    
         optimizer.zero_grad() 
         output = model(data)
         loss = F.nll_loss(output, target)

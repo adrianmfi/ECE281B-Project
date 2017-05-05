@@ -25,12 +25,12 @@ class ImageNet(data.Dataset):
             #self.labelcsv = csv.reader(open(os.path.join(self.root, self.raw_folder, 'test/train_labels.csv')))
             self.imgurls = sorted(glob.glob(os.path.join(self.root, self.raw_folder, 'test/images/')+'*.JPEG'));
     def __getitem__(self, index):
+        #Some images only have one channel
         img = Image.open(self.imgurls[index]).convert('RGB')
         if self.train:
-            target = torch.LongTensor([int(self.labelcsv[index][1])])
+            target = int(self.labelcsv[index][1])
         else:
-            target = torch.LongTensor([-1])
-        
+            target = int(-1)
         if self.transform is not None:
             img = self.transform(img)
 
