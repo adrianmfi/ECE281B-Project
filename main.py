@@ -16,6 +16,8 @@ from torchvision import utils
 import matplotlib.pyplot as plt
 import numpy as np
 
+showSample = False
+
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
@@ -61,7 +63,6 @@ class Net(nn.Module):
         self.fc4 = nn.Linear(50, 10)
 
     def forward(self, x):
-        show(x[0].data,'asdf')
         x = F.relu(F.max_pool3d(self.conv1(x), 2))
         x = F.relu(F.max_pool3d(self.conv2_drop(self.conv2(x)), 2)) 
         x = x.view(-1, 320)
