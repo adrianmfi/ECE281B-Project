@@ -89,4 +89,4 @@ ENV/
 .ropeproject
 
 #Dataset
-imagenet56x56_release
+data/
