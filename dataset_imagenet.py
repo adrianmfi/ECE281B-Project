@@ -18,19 +18,16 @@ class ImageNet(data.Dataset):
         self.target_transform = target_transform
         self.train = train  # training set or test set
         if self.train:
-            self.labelcsv = csv.reader(open(os.path.join(self.root, self.raw_folder, 'train/train_labels.csv')))
-            self.labelcsv = sorted(self.labelcsv,key=operator.itemgetter(0))
-            self.imgurls = sorted(glob.glob(os.path.join(self.root, self.raw_folder, 'train/images/')+'*.JPEG'))
+            self.labelcsv = csv.reader(open(os.path.join(self.root, self.processed_folder, 'train/labels.csv')))
+            self.imgurls = sorted(glob.glob(os.path.join(self.root, self.processed_folder, 'train/images/')+'*.JPEG'))
         else:
-            #self.labelcsv = csv.reader(open(os.path.join(self.root, self.raw_folder, 'test/train_labels.csv')))
-            self.imgurls = sorted(glob.glob(os.path.join(self.root, self.raw_folder, 'test/images/')+'*.JPEG'));
+            self.labelcsv = csv.reader(open(os.path.join(self.root, self.processed_folder, 'validate/labels.csv')))
+            self.imgurls = sorted(glob.glob(os.path.join(self.root, self.processed_folder, 'validate/images/')+'*.JPEG'));
+        self.labelcsv = sorted(self.labelcsv,key=operator.itemgetter(0))
     def __getitem__(self, index):
-        #Some images only have one channel
-        img = Image.open(self.imgurls[index]).convert('RGB')
-        if self.train:
-            target = int(self.labelcsv[index][1])
-        else:
-            target = int(-1)
+        img = Image.open(self.imgurls[index])
+        target = int(self.labelcsv[index][1])
+
         if self.transform is not None:
             img = self.transform(img)
 
@@ -40,13 +37,40 @@ class ImageNet(data.Dataset):
 
     def __len__(self):
         if self.train:
-            return 50000
+            return 40000
         else:
             return 10000
 
+def splitTrainingSetInTwo():
+    #Sorts and splits the training set and its corresponding labels into two folders with cutoff number of training pictures
+    cutoff = 40000
+
+    if not os.path.exists('data/processed/train/images'):
+        os.makedirs('data/processed/train/images')
+    if not os.path.exists('data/processed/validate/images'):
+        os.makedirs('data/processed/validate/images')
+
+    imgurls = sorted(glob.glob(os.path.join('data','raw', 'train/images/')+'*.JPEG'))
+    labelcsv = csv.reader(open(os.path.join('data', 'raw', 'train/train_labels.csv')))
+    labelcsv = sorted(labelcsv,key=operator.itemgetter(0))
+
+    with open('data/processed/train/labels.csv','w+') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(labelcsv[0:cutoff])
+    with open('data/processed/validate/labels.csv','w+') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(labelcsv[cutoff:50000])
+
+    for i in range(cutoff):
+        url = imgurls[i]
+        img = Image.open(url).convert('RGB')
+        img.save('data/processed/train/images/'+url.lstrip('data/raw/train/images/'))
+    for i in range(cutoff,50000):
+        url = imgurls[i]
+        img = Image.open(url).convert('RGB')
+        img.save('data/processed/validate/images/'+url.lstrip('data/raw/train/images/'))
+        
 if __name__ == '__main__':
-    #read_label_file('data/raw/train/train_labels.csv')
-    #read_image_folder('data/raw/train/images/')
-    #generateTorchFile('data','raw','processed','training.pt','test.pt')
-    net = ImageNet('data',)
-    net[49999][0].show()
+    #net = ImageNet('data',)
+    #net[49999][0].show()
+    splitTrainingSetInTwo()
