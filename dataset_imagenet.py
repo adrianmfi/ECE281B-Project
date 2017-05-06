@@ -7,7 +7,7 @@ import csv
 import os
 import glob
 import operator
-
+import shutil
 
 class ImageNet(data.Dataset):
     raw_folder = 'raw'
@@ -27,6 +27,7 @@ class ImageNet(data.Dataset):
     def __getitem__(self, index):
         img = Image.open(self.imgurls[index])
         target = int(self.labelcsv[index][1])
+        print (img,target)
 
         if self.transform is not None:
             img = self.transform(img)
@@ -61,15 +62,11 @@ def splitTrainingSetInTwo():
         writer = csv.writer(csvfile)
         writer.writerows(labelcsv[cutoff:50000])
 
-    for i in range(cutoff):
-        url = imgurls[i]
-        img = Image.open(url).convert('RGB')
-        img.save('data/processed/train/images/'+url.lstrip('data/raw/train/images/'))
-    for i in range(cutoff,50000):
-        url = imgurls[i]
-        img = Image.open(url).convert('RGB')
-        img.save('data/processed/validate/images/'+url.lstrip('data/raw/train/images/'))
-        
+    for url in imgurls[0:cutoff]:
+        shutil.copy(url,'data/processed/train/images/')
+    for url in imgurls[cutoff:50000]:
+        shutil.copy(url,'data/processed/validate/images/')
+    
 if __name__ == '__main__':
     #net = ImageNet('data',)
     #net[49999][0].show()

@@ -117,7 +117,7 @@ def train(epoch):
         data, target = Variable(data), Variable(target)    
         optimizer.zero_grad() 
         output = model(data)
-        print (output,target)
+        print (data,target)
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
@@ -125,6 +125,7 @@ def train(epoch):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.data[0]))
+        
 
 def test(epoch):
     model.eval()
@@ -159,5 +160,3 @@ def show(img,title=''):
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     test(epoch)
-print("Confusion matrix:")
-print(confMat)
