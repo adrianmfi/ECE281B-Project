@@ -25,9 +25,9 @@ class ImageNet(data.Dataset):
             self.imgurls = sorted(glob.glob(os.path.join(self.root, self.processed_folder, 'validate/images/')+'*.JPEG'));
         self.labelcsv = sorted(self.labelcsv,key=operator.itemgetter(0))
     def __getitem__(self, index):
-        img = Image.open(self.imgurls[index])
+        #Some images are bw
+        img = Image.open(self.imgurls[index]).convert('RGB')
         target = int(self.labelcsv[index][1])
-        print (img,target)
 
         if self.transform is not None:
             img = self.transform(img)
