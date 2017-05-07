@@ -50,13 +50,13 @@ kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 train_loader = torch.utils.data.DataLoader(
     ImageNet('data', train=True,transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.47858,0.44496,0.39216),(1,1,1))
+        transforms.Normalize((0.478571,0.444958,0.392131),(0.264118,0.255156,0.269064))
         ])), 
     batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
     ImageNet('data', train=False, transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.47858,0.44496,0.39216),(1,1,1))
+        transforms.Normalize((0.478571,0.444958,0.392131),(0.264118,0.255156,0.269064))
         ])),
     batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -65,29 +65,33 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),
-        )
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, stride=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2),)
         self.classifier = nn.Sequential(
-            nn.Dropout(),
-            nn.Linear(64*3*3, 64*3*3),
+            nn.Linear(128*5*5, 128*5*5),
             nn.ReLU(inplace=True),
             nn.Dropout(),
-            nn.Linear(64*3*3, 64*3*3),
+            nn.Linear(128*5*5, 128*5*5),
             nn.ReLU(inplace=True),
-            nn.Linear(64*3*3, 100),
+            nn.Linear(128*5*5, 100),
         )
     def forward(self, x):
         x = self.features(x)
-        x = x.view(-1, 64*3*3)
+        x = x.view(-1, 128*5*5)
         x = self.classifier(x)
         return F.log_softmax(x)
 
