@@ -88,8 +88,9 @@ ENV/
 # Rope project settings
 .ropeproject
 
-#Dataset
+#Dataset and model
 data/
+model/
 
 #Some private notes and thoughts
 notes.txt

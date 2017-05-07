@@ -7,6 +7,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 
+import os
 import matplotlib.pyplot as plt 
 import PIL
 import numpy as np
@@ -36,6 +37,8 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
+parser.add_argument('--resume', default='', type=str, metavar='PATH',
+                    help='path to latest checkpoint (default: none)')
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -62,31 +65,40 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),
         )
         self.classifier = nn.Sequential(
             nn.Dropout(),
-            nn.Linear(64*14*14, 64*7*7),
+            nn.Linear(64*3*3, 64*3*3),
             nn.ReLU(inplace=True),
             nn.Dropout(),
-            nn.Linear(64*7*7, 64*7*7),
+            nn.Linear(64*3*3, 64*3*3),
             nn.ReLU(inplace=True),
-            nn.Linear(64*7*7, 100),
+            nn.Linear(64*3*3, 100),
         )
     def forward(self, x):
         x = self.features(x)
-        x = x.view(-1, 64*14*14)
+        x = x.view(-1, 64*3*3)
         x = self.classifier(x)
         return F.log_softmax(x)
 
 model = Net()
+if args.resume:
+        if os.path.isfile(args.resume):
+            print("=> loading checkpoint '{}'".format(args.resume))
+            checkpoint = torch.load(args.resume)
+            model.load_state_dict(checkpoint['state_dict'])
+            print("=> loaded checkpoint (epoch {})"
+                  .format(checkpoint['epoch']))
 if args.cuda:
     model.cuda()
 
@@ -161,3 +173,8 @@ def findDatasetMean():
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     test(epoch)
+    torch.save({
+            'epoch': epoch + 1,
+            'arch': 'fioNet',
+            'state_dict': model.state_dict(),
+        }, 'checkpoint.tar' )
