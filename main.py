@@ -45,10 +45,16 @@ if args.cuda:
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 train_loader = torch.utils.data.DataLoader(
-    ImageNet('data', train=True,transform =transforms.ToTensor()), 
+    ImageNet('data', train=True,transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.47858,0.44496,0.39216),(1,1,1))
+        ])), 
     batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
-    ImageNet('data', train=False, transform =transforms.ToTensor()),
+    ImageNet('data', train=False, transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.47858,0.44496,0.39216),(1,1,1))
+        ])),
     batch_size=args.batch_size, shuffle=True, **kwargs)
 
 
@@ -56,61 +62,30 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(3, 66, kernel_size=11, stride=2, padding=2),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2),
-            nn.Conv2d(66, 192, kernel_size=5, padding=2),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2),
-            nn.Conv2d(192, 384, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.MaxPool2d(kernel_size=2),
         )
         self.classifier = nn.Sequential(
             nn.Dropout(),
-            nn.Linear(384*2*2, 4096),
+            nn.Linear(64*14*14, 64*7*7),
             nn.ReLU(inplace=True),
             nn.Dropout(),
-            nn.Linear(4096, 4096),
+            nn.Linear(64*7*7, 64*7*7),
             nn.ReLU(inplace=True),
-            nn.Linear(4096, 100),
+            nn.Linear(64*7*7, 100),
         )
     def forward(self, x):
         x = self.features(x)
-        x = x.view(-1, 384*2*2)
+        x = x.view(-1, 64*14*14)
         x = self.classifier(x)
         return F.log_softmax(x)
-'''
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3, 66, kernel_size=11, stride=2, padding=2),
-        self.rel1 = nn.ReLU(inplace=True),
-        self.mp1 = nn.MaxPool2d(kernel_size=3, stride=2),
-        self.conv2 = nn.Conv2d(66, 192, kernel_size=5, padding=2),
-        self.rel2 = nn.ReLU(inplace=True),
-        self.mp2 = nn.MaxPool2d(kernel_size=3, stride=2),
-        self.conv3 = nn.Conv2d(256, 256, kernel_size=3, padding=1),
-        self.rel3 = nn.ReLU(inplace=True),
-        self.mp3 = nn.MaxPool2d(kernel_size=3, stride=2),
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 200)
-        self.fc2 = nn.Linear(200,100)
-        self.fc3 = nn.Linear(100, 50)
-        self.fc4 = nn.Linear(50, 10)
 
-    def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2)) 
-        x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
-        x = F.relu(self.fc2(x))
-        x = F.dropout(x,training=self.training)
-        x = F.relu(self.fc3(x))
-        x = self.fc4(x)
-        return F.log_softmax(x)
-'''
 model = Net()
 if args.cuda:
     model.cuda()
@@ -164,6 +139,25 @@ def show(img,title=''):
     plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
     plt.title(title)
     plt.show()
+
+def findDatasetMean():
+    train_loader2 = torch.utils.data.DataLoader(
+        ImageNet('data', train=True,transform =transforms.ToTensor()), 
+        batch_size=1)
+    test_loader2 = torch.utils.data.DataLoader(
+        ImageNet('data', train=False, transform =transforms.ToTensor()),
+            batch_size=1)
+    mean = [0,0,0]
+    for data,label in train_loader2:
+        mean[0] += data[0,0].mean()
+        mean[1] += data[0,1].mean()
+        mean[2] += data[0,2].mean()
+    for data,label in test_loader2:
+        mean[0] += data[0,0].mean()
+        mean[1] += data[0,1].mean()
+        mean[2] += data[0,2].mean()
+    print (mean[0]/50000,mean[1]/50000,mean[2]/50000)
+
 for epoch in range(1, args.epochs + 1):
     train(epoch)
     test(epoch)

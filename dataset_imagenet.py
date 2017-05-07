@@ -28,7 +28,6 @@ class ImageNet(data.Dataset):
         #Some images are bw
         img = Image.open(self.imgurls[index]).convert('RGB')
         target = int(self.labelcsv[index][1])
-
         if self.transform is not None:
             img = self.transform(img)
 
@@ -43,7 +42,8 @@ class ImageNet(data.Dataset):
             return 10000
 
 def splitTrainingSetInTwo():
-    #Sorts and splits the training set and its corresponding labels into two folders with cutoff number of training pictures
+    #Sorts and splits the training set and its corresponding labels
+    #into two folders with cutoff number of training pictures in the first
     cutoff = 40000
 
     if not os.path.exists('data/processed/train/images'):
@@ -66,7 +66,7 @@ def splitTrainingSetInTwo():
         shutil.copy(url,'data/processed/train/images/')
     for url in imgurls[cutoff:50000]:
         shutil.copy(url,'data/processed/validate/images/')
-    
+
 if __name__ == '__main__':
     #net = ImageNet('data',)
     #net[49999][0].show()
