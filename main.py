@@ -122,7 +122,7 @@ if __name__ == '__main__':
             transforms.Normalize((0.478571,0.444958,0.392131),(0.264118,0.255156,0.269064))
             ])), 
         batch_size=args.batch_size, shuffle=True, **kwargs)
-    testLoader = torch.utils.data.DataLoader(
+    valLoader = torch.utils.data.DataLoader(
         ImageNet('data', train=False, transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.478571,0.444958,0.392131),(0.264118,0.255156,0.269064))
