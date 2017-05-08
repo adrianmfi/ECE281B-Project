@@ -88,5 +88,6 @@ ENV/
 # Rope project settings
 .ropeproject
 
-#Dataset and model
+#Dataset and models
 data/
+models/
