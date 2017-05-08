@@ -12,7 +12,8 @@ import numpy as np
 from dataset_imagenet import ImageNet
 from torchvision import utils
 
-def train(epoch,model,optimizer,trainLoader):
+def train(epoch,model,optimizer,trainLoader,lr_scheduler, initLr):
+    optimizer = lr_scheduler(optimizer, epoch, init_lr = initLr)
     model.train()
     for batchIdx, (data, target) in enumerate(trainLoader):
         if args.cuda:
@@ -49,6 +50,18 @@ def validate(epoch,model,optimizer,valLoader):
         100. * correct / len(valLoader.dataset)))
 
     return correct/len(valLoader.dataset)
+
+def exp_lr_scheduler(optimizer, epoch, init_lr=0.001, lr_decay_epoch=7):
+    """Decay learning rate by a factor of 0.1 every lr_decay_epoch epochs."""
+    lr = init_lr * (0.1**(epoch // lr_decay_epoch))
+
+    if epoch % lr_decay_epoch == 0:
+        print('LR is set to {}'.format(lr))
+
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+    return optimizer
 
 def saveCheckpoint(state, isBest, filename='models/checkpoint.pth.tar'):
     torch.save(state, filename)
@@ -118,16 +131,16 @@ if __name__ == '__main__':
                 print("=> loading checkpoint '{}'".format(args.resume))
                 checkpoint = torch.load(args.resume)
                 startEpoch = checkpoint['epoch']
-                #bestPrecision = checkpoint['best_precision']
+                bestPrecision = checkpoint['best_precision']
                 model.load_state_dict(checkpoint['state_dict'])
-                #optimizer.load_state_dict(checkpoint['optimizer'])
+                optimizer.load_state_dict(checkpoint['optimizer'])
                 print("=> loaded checkpoint (epoch {})"
                       .format(checkpoint['epoch']))
     if args.cuda:
         model.cuda()
              
     for epoch in range(startEpoch, startEpoch+args.epochs + 1):
-        train(epoch,model_conv,optimizer,trainLoader)
+        train(epoch,model_conv,optimizer,trainLoader,exp_lr_scheduler,args.lr)
         precision = validate(epoch,model_conv,optimizer,valLoader)
         isBest = precision > bestPrecision
         saveCheckpoint({
