@@ -4,41 +4,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms, models
 from torch.autograd import Variable
 
 import os
 import numpy as np
 from dataset_imagenet import ImageNet
 from torchvision import utils
-
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.MaxPool2d(kernel_size=2),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.MaxPool2d(kernel_size=2),
-            )
-        self.classifier = nn.Sequential(
-            nn.Dropout(),
-            nn.Linear(64*14*14, 64*7*7),
-            nn.ReLU(inplace=True),
-            nn.Dropout(),
-            nn.Linear(64*7*7, 64*7*7),
-            nn.ReLU(inplace=True),
-            nn.Linear(64*7*7, 100),
-        )
-    def forward(self, x):
-        x = self.features(x)
-        x = x.view(-1, 64*14*14)
-        x = self.classifier(x)
-        return F.log_softmax(x)
 
 def train(epoch,model,optimizer,trainLoader):
     model.train()
@@ -55,7 +27,6 @@ def train(epoch,model,optimizer,trainLoader):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batchIdx * len(data), len(trainLoader.dataset),
                 100. * batchIdx / len(trainLoader), loss.data[0]))
-
 
 def validate(epoch,model,optimizer,valLoader):
     model.eval()
@@ -118,19 +89,27 @@ if __name__ == '__main__':
     #Set up the data loaders, optimizer and net
     trainLoader = torch.utils.data.DataLoader(
         ImageNet('data', train=True,transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.Scale(224),
             transforms.ToTensor(),
-            transforms.Normalize((0.478571,0.444958,0.392131),(0.264118,0.255156,0.269064))
+            transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
             ])), 
         batch_size=args.batch_size, shuffle=True, **kwargs)
     valLoader = torch.utils.data.DataLoader(
         ImageNet('data', train=False, transform = transforms.Compose([
+            transforms.Scale(224),
             transforms.ToTensor(),
-            transforms.Normalize((0.478571,0.444958,0.392131),(0.264118,0.255156,0.269064))
+            transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
             ])),
         batch_size=args.batch_size, shuffle=True, **kwargs)
 
-    model = Net()
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    model_conv = models.resnet18(pretrained=True)
+    for param in model_conv.parameters():
+        param.requires_grad = False
+    num_ftrs = model_conv.fc.in_features
+    model_conv.fc = nn.Linear(num_ftrs, 100)
+
+    optimizer = optim.SGD(model_conv.fc.parameters(), lr=args.lr, momentum=args.momentum)
     startEpoch = 1
     bestPrecision = 0
     #Resume from checkpoint if possible
@@ -148,12 +127,12 @@ if __name__ == '__main__':
         model.cuda()
              
     for epoch in range(startEpoch, startEpoch+args.epochs + 1):
-        train(epoch,model,optimizer,trainLoader)
-        precision = validate(epoch,model,optimizer,valLoader)
+        train(epoch,model_conv,optimizer,trainLoader)
+        precision = validate(epoch,model_conv,optimizer,valLoader)
         isBest = precision > bestPrecision
         saveCheckpoint({
             'epoch': epoch + 1,
-            'state_dict': model.state_dict(),
+            'state_dict': model_conv.state_dict(),
             'best_precision': bestPrecision,
             'optimizer' : optimizer.state_dict(),
         }, isBest)
