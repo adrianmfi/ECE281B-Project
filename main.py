@@ -7,6 +7,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms, models
 from torch.autograd import Variable
 
+import shutil
 import os
 import numpy as np
 from dataset_imagenet import ImageNet
