@@ -22,11 +22,11 @@ parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                     help='input batch size for testing (default: 1000)')
 parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
                     help='learning rate (default: 0.001)')
-parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
+parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum (default: 0.9)')
-parser.add_argument('--workers', type=float, default=0, metavar='N',
+parser.add_argument('--workers', type=int, default=0, metavar='N',
                     help='Number of workers (default: 0)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
@@ -51,6 +51,8 @@ def train(epoch,model,optimizer,trainLoader,lr_scheduler, initLr):
     model.train()
     for batchIdx, (data, target) in enumerate(trainLoader):
         startTime = time.clock()
+        #Because of bug in dataset, preprocess again and remove
+        target = target.long()
         if args.cuda:
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data), Variable(target)    
@@ -72,7 +74,7 @@ def validate(epoch,model,optimizer,valLoader):
     for idx,(data, target) in enumerate(valLoader):##
         if args.cuda:
             data, target = data.cuda(), target.cuda()
-
+        target = target.long()
         data, target = Variable(data, volatile=True), Variable(target)
         output = model(data)
         valLoss += F.cross_entropy(output, target).data[0]
@@ -128,7 +130,6 @@ if __name__ == '__main__':
     num_ftrs = model_conv.fc.in_features
     model_conv.fc = nn.Linear(num_ftrs, 100)
     optimizer = optim.SGD(model_conv.fc.parameters(), lr=args.lr, momentum=args.momentum)
-    print( model_conv)    
     startEpoch = 1
     bestPrecision = 0
     #Resume from checkpoint if specified

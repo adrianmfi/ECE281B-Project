@@ -6,9 +6,7 @@ from PIL import Image
 import numpy as np
 import csv
 import os
-import glob
-import operator
-import shutil
+import time
 
 cutoff = 40000
 
@@ -28,10 +26,7 @@ class ImageNet(data.Dataset):
 
     def __getitem__(self, index):
         img,target = self.data[index], self.labels[index]
-        img = Image.fromarray(np.transpose(img.numpy(),(1,2,0)))
-        print(img)
-        img.show()
-        exit(1)
+        img = Image.fromarray(img.numpy())
         if self.transform is not None:
             img = self.transform(img)
         if self.target_transform is not None:
@@ -61,10 +56,10 @@ def preprocessData():
     next(labelcsv)
 
     imgSize = newSize if resize else 56
-    images_train = torch.ByteTensor(cutoff,3,imgSize,imgSize)
-    labels_train = torch.zeros(cutoff)
-    images_val = torch.ByteTensor(50000-cutoff,3,imgSize,imgSize)
-    labels_val = torch.zeros(50000-cutoff)
+    images_train = torch.ByteTensor(cutoff,imgSize,imgSize,3)
+    labels_train = torch.LongTensor(cutoff)
+    images_val = torch.ByteTensor(50000-cutoff,imgSize,imgSize,3)
+    labels_val = torch.LongTensor(50000-cutoff)
     toTensor = ToTensor()
     
     i = 0
@@ -75,9 +70,10 @@ def preprocessData():
         label = int(entry[1])
         img = Image.open(os.path.join('data/raw/train/images',filename+'.JPEG')).convert("RGB")
         if resize:
-            img = img.resize((newSize,newSize),Image.BICUBIC)
-        imgTensor = toTensor(img)
-        imgBytes = imgTensor.byte()
+            img = img.resize((newSize,newSize),Image.BICUBIC)        
+        imgnp = np.array(img.getdata(), dtype=np.uint8).reshape(imgSize, imgSize,3)
+        imgBytes = torch.ByteTensor(imgnp)
+        
         images_train[i] = imgBytes
         labels_train[i] = label
         i+=1
@@ -90,11 +86,12 @@ def preprocessData():
         img = Image.open(os.path.join('data/raw/train/images',filename+'.JPEG')).convert("RGB")
         if resize:
             img = img.resize((newSize,newSize))
-        imgTensor = toTensor(img)
-        imgBytes = imgTensor.byte()
+        imgnp = np.array(img.getdata(), dtype=np.uint8).reshape(imgSize, imgSize,3)
+        imgBytes = torch.ByteTensor(imgnp)
         images_val[i] = imgBytes
         labels_val[i] = label
         i+=1
+
     if not os.path.exists('data/processed/'):
         os.makedirs('data/processed/')
     with open('data/processed/train.pt', 'wb') as f:
@@ -103,4 +100,8 @@ def preprocessData():
         torch.save((images_val,labels_val), f)
     print('Done!')
 if __name__ == '__main__':
-    preprocessData()
+    #preprocessData()
+    n = ImageNet('data')
+    i1 = n[0]
+    i2 = n[1]
+    print(i1,i2)
