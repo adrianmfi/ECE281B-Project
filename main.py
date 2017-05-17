@@ -12,7 +12,7 @@ import time
 import shutil
 import os
 import numpy as np
-import models
+import models.wideresnet as wrn
 from dataset.dataset_imagenet import ImageNet
 from torchvision import utils
 
@@ -66,10 +66,10 @@ def main():
 		batch_size=args.batch_size, shuffle=False, **kwargs)
 
 	#Set up the model and optimizer
-	model = WideResNet(22, 100,4)
-	optimizer = optim.SGD(model.fc.parameters(), lr=args.lr, momentum=args.momentum)
-	criterion = nn.CrossEntropyLoss()
+	model = models.squeezenet.squeezenet1_1(True)
 	print(model)
+	optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+	criterion = nn.CrossEntropyLoss()
 
 	#Resume from checkpoint if specified
 	if args.resume:
@@ -108,12 +108,9 @@ def main():
 			'optimizer' : optimizer.state_dict(),
 		}, isBest)
 
-		
 def train(trainLoader,model,criterion,optimizer,epoch):
 	model.train()
 	for batchIdx, (data, target) in enumerate(trainLoader):
-		#Because of bug in dataset, preprocess again and remove
-		target = target.long()
 		if args.cuda:
 			data, target = data.cuda(), target.cuda()
 		data, target = Variable(data), Variable(target)	
@@ -137,7 +134,7 @@ def validate(valLoader,model,criterion):
 		target = target.long()
 		data, target = Variable(data, volatile=True), Variable(target)
 		output = model(data)
-		valLoss += F.cross_entropy(output, target).data[0]
+		valLoss += criterion(output, target).data[0]
 		pred = output.data.max(1)[1] # get the index of the max log-probability
 		correct += pred.eq(target.data).cpu().sum()
 
