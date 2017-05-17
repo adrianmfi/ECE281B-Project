@@ -40,7 +40,7 @@ class ImageNet(data.Dataset):
             return 50000-cutoff
 
 def preprocessData():
-    #Sorts and splits the training set and its corresponding labels
+    #Splits the training set and its corresponding labels
     #into two folders with cutoff number of training pictures in the first
     #and 50000 - cutoff numbers in the other
     #Requires the csv file to be stored in ./data/raw/train

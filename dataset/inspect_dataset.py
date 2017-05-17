@@ -2,8 +2,11 @@ import torch
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+import csv
+import PIL
+import operator
 
-if __name__ == '__main__':
+def inspectProcessed():
 	calcHist = False
 	imageNum = 1
 
@@ -31,3 +34,22 @@ if __name__ == '__main__':
 			img = d.numpy()
 			plt.imshow(img)
 			plt.show()
+
+def inspectRaw():
+	labelcsv = csv.reader(open('../data/raw/train/train_labels.csv'))
+	next(labelcsv)
+	bwcounts = np.zeros(100)
+	labels = np.zeros(100)
+	for i,row in enumerate(sorted(labelcsv,key = operator.itemgetter(0))):
+		path = row[0]
+		label = int(row[1])
+		img = PIL.Image.open('../data/raw/train/images/'+path+'.JPEG')
+		if img.mode != 'RGB':
+			bwcounts[label] +=1
+		labels[label] +=1
+		if i == 1000:
+			break
+	print(bwcounts)
+	print(labels)
+if __name__ == '__main__':
+	inspectRaw()
