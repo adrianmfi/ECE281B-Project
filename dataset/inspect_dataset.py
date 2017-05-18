@@ -38,22 +38,25 @@ def inspectProcessed():
 
 def inspectRaw():
 	#Counts how many bw pictures are of each class
-	labelcsv = csv.reader(open('../data/raw/train/train_labels.csv'))
+	
+	#How many images should be checked 
+	howMany = 1000
+
+	labelcsv = csv.reader(open('data/raw/train/train_labels.csv'))
 	next(labelcsv)
 	bwcounts = np.zeros(100)
 	labels = np.zeros(100)
 	for i,row in enumerate(sorted(labelcsv,key = operator.itemgetter(0))):
 		path = row[0]
 		label = int(row[1])
-		img = PIL.Image.open('../data/raw/train/images/'+path+'.JPEG')
+		img = PIL.Image.open('data/raw/train/images/'+path+'.JPEG')
 		if img.mode != 'RGB':
 			bwcounts[label] +=1
 		labels[label] +=1
-		if i == 1000:
+		if i == howMany:
 			break
 	print(bwcounts)
 	print(labels)
 
-def testUnshuffled():
 if __name__ == '__main__':
 	inspectRaw()

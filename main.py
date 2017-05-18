@@ -53,23 +53,28 @@ def main():
 	#Set up the data loaders
 	kwargs = {'num_workers': args.workers, 'pin_memory': True} if args.cuda else {}
 	trainLoader = torch.utils.data.DataLoader(
-		ImageNet('data', train=True,transform = transforms.Compose([
-			transforms.RandomHorizontalFlip(),
+		ImageNet('data', train=True,fromFolder = False,transform = transforms.Compose([
+#			transforms.RandomHorizontalFlip(),
 			transforms.ToTensor(),
 			transforms.Normalize([0.478571, 0.44496, 0.392131],[0.26412, 0.255156, 0.269064])
 			])), 
-		batch_size=args.batch_size, shuffle=True, **kwargs)
+		batch_size=args.batch_size, shuffle=False, **kwargs)
 	valLoader = torch.utils.data.DataLoader(
-		ImageNet('data', train=False, transform = transforms.Compose([
+		ImageNet('data', train=False,fromFolder = False, transform = transforms.Compose([
  			transforms.ToTensor(),
 			transforms.Normalize([0.478571, 0.44496, 0.392131],[0.26412, 0.255156, 0.269064])
 			])),
 		batch_size=args.batch_size, shuffle=False, **kwargs)
 
 	#Set up the model, optimizer and loss function
-	model = models.squeezenet.squeezenet1_1(False,num_classes = 100)
+	model = models.squeezenet.squeezenet1_1(num_classes = 100)
 	criterion = nn.CrossEntropyLoss()
 	optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+	if args.cuda:
+		model.cuda()
+		criterion = criterion.cuda()
+	#Train
+	startEpoch = 1
 
 	#Resume from checkpoint if specified
 	if args.resume:
@@ -83,11 +88,9 @@ def main():
 				optimizer.load_state_dict(checkpoint['optimizer'])
 				print("=> loaded checkpoint (epoch {})"
 					  .format(checkpoint['epoch']))
-	if args.cuda:
-		model.cuda()
-		criterion = criterion.cuda()
-	#Train
-	startEpoch = 1
+			else:
+				print('Could not find checkpoint at given path')
+
 	for epoch in range(startEpoch, startEpoch+args.epochs + 1):
 		exp_lr_scheduler(optimizer,epoch,args.lr)
 		startTime = time.clock()
@@ -123,7 +126,6 @@ def train(trainLoader,model,criterion,optimizer,epoch):
 			print('\nTrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
 				epoch, batchIdx * len(data), len(trainLoader.dataset),
 				100. * batchIdx / len(trainLoader), loss.data[0]))
-
 def validate(valLoader,model,criterion):
 	model.eval()
 	valLoss = 0
@@ -137,7 +139,6 @@ def validate(valLoader,model,criterion):
 		valLoss += criterion(output, target).data[0]
 		pred = output.data.max(1)[1] # get the index of the max log-probability
 		correct += pred.eq(target.data).cpu().sum()
-
 	valLoss = valLoss
 	valLoss /= len(valLoader) # loss function already averages over batch size
 	print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
@@ -145,7 +146,7 @@ def validate(valLoader,model,criterion):
 		100. * correct / len(valLoader.dataset)))
 	return correct/len(valLoader.dataset)
 
-def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=7):
+def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=30):
 	"""Decay learning rate by a factor of 0.1 every lr_decay_epoch epochs."""
 	lr = init_lr * (0.1**(epoch // lr_decay_epoch))
 
