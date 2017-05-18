@@ -19,6 +19,8 @@ class ImageNet(data.Dataset):
         self.target_transform = target_transform
         self.train = train  # training set or validation set
         self.fromFolder = fromFolder
+        self.trainLen = cutoff
+        self.valLen = 50000-cutoff
         if self.fromFolder:
             if self.train:
                 self.labelcsv = csv.reader(open(os.path.join(self.root, self.processed_folder, 'train/labels.csv')))
@@ -48,9 +50,9 @@ class ImageNet(data.Dataset):
 
     def __len__(self):
         if self.train:
-            return cutoff
+            return self.trainLen
         else:
-            return 50000-cutoff
+            return self.valLen
 
 def preprocessData():
     #Splits the training set and its corresponding labels

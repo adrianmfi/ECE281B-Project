@@ -7,6 +7,7 @@ import PIL
 import operator
 
 def inspectProcessed():
+	#Counts the pictures of each class and shows pictures from class imageNum
 	calcHist = False
 	imageNum = 1
 
@@ -36,6 +37,7 @@ def inspectProcessed():
 			plt.show()
 
 def inspectRaw():
+	#Counts how many bw pictures are of each class
 	labelcsv = csv.reader(open('../data/raw/train/train_labels.csv'))
 	next(labelcsv)
 	bwcounts = np.zeros(100)
@@ -51,5 +53,7 @@ def inspectRaw():
 			break
 	print(bwcounts)
 	print(labels)
+
+def testUnshuffled():
 if __name__ == '__main__':
 	inspectRaw()

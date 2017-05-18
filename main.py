@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 import argparse
 import torch
 import torch.nn as nn
@@ -65,11 +66,10 @@ def main():
 			])),
 		batch_size=args.batch_size, shuffle=False, **kwargs)
 
-	#Set up the model and optimizer
-	model = models.squeezenet.squeezenet1_1(True)
-	print(model)
-	optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+	#Set up the model, optimizer and loss function
+	model = models.squeezenet.squeezenet1_1(False,num_classes = 100)
 	criterion = nn.CrossEntropyLoss()
+	optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
 	#Resume from checkpoint if specified
 	if args.resume:
@@ -94,7 +94,7 @@ def main():
 		train(trainLoader,model,criterion,optimizer,epoch)
 		endTime = time.clock()
 		print ('Time used for epoch: ',(endTime-startTime))
-		precision = validate(valLoader,model,epoch)
+		precision = validate(valLoader,model,criterion)
 		isBest = False
 		if precision > bestPrecision:
 			bestPrecision = precision
@@ -120,7 +120,7 @@ def train(trainLoader,model,criterion,optimizer,epoch):
 		loss.backward()
 		optimizer.step()
 		if batchIdx % args.log_interval == 0:
-			print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+			print('\nTrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
 				epoch, batchIdx * len(data), len(trainLoader.dataset),
 				100. * batchIdx / len(trainLoader), loss.data[0]))
 
@@ -140,10 +140,9 @@ def validate(valLoader,model,criterion):
 
 	valLoss = valLoss
 	valLoss /= len(valLoader) # loss function already averages over batch size
-	print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+	print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
 		valLoss, correct, len(valLoader.dataset),
 		100. * correct / len(valLoader.dataset)))
-
 	return correct/len(valLoader.dataset)
 
 def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=7):
