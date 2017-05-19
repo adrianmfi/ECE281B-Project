@@ -54,6 +54,5 @@ def inspectRaw():
 	print(bwcounts)
 	print(labels)
 
-def testUnshuffled():
 if __name__ == '__main__':
 	inspectRaw()

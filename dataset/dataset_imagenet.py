@@ -1,19 +1,17 @@
 from __future__ import print_function
 import torch.utils.data as data
 import torch
-from torchvision.transforms import ToTensor
 from PIL import Image
 import numpy as np
 import csv
 import os
-import time
-
+import operator 
 cutoff = 40000
 
 class ImageNet(data.Dataset):
     raw_folder = 'raw'
     processed_folder = 'processed'
-    def __init__(self, root, train=True, transform=None, target_transform=None,fromFolder = False):
+    def __init__(self, root, train=True, transform=None, target_transform=None,fromFolder = True):
         self.root = root
         self.transform = transform
         self.target_transform = target_transform
@@ -24,10 +22,8 @@ class ImageNet(data.Dataset):
         if self.fromFolder:
             if self.train:
                 self.labelcsv = csv.reader(open(os.path.join(self.root, self.processed_folder, 'train/labels.csv')))
-                self.imgurls = sorted(glob.glob(os.path.join(self.root, self.processed_folder, 'train/images/')+'*.JPEG'))
             else:
                 self.labelcsv = csv.reader(open(os.path.join(self.root, self.processed_folder, 'validate/labels.csv')))
-                self.imgurls = sorted(glob.glob(os.path.join(self.root, self.processed_folder, 'validate/images/')+'*.JPEG'));
             self.labelcsv = sorted(self.labelcsv,key=operator.itemgetter(0))
         else:    
             if self.train:
@@ -37,8 +33,12 @@ class ImageNet(data.Dataset):
 
     def __getitem__(self, index):
         if self.fromFolder:
-            img = Image.open(self.imgurls[index])
+            url = self.labelcsv[index][0]
             target = int(self.labelcsv[index][1])
+            if self.train:
+                img = Image.open(self.root+'/'+self.processed_folder+'/train/images/'+url+'.JPEG')
+            else:
+                img = Image.open(self.root+'/'+self.processed_folder+'/validate/images/'+url+'.JPEG')
         else:        
             img,target = self.data[index], self.labels[index]
             img = Image.fromarray(img.numpy())

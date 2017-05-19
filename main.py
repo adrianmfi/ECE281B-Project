@@ -8,12 +8,10 @@ import torch.optim as optim
 from torchvision import datasets, transforms, models
 from torch.autograd import Variable
 
-import math
 import time
 import shutil
 import os
 import numpy as np
-import models.wideresnet as wrn
 from dataset.dataset_imagenet import ImageNet
 from torchvision import utils
 
@@ -35,7 +33,7 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
 					help='enables CUDA training')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
 					help='random seed (default: 1)')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+parser.add_argument('--log-interv 	al', type=int, default=10, metavar='N',
 					help='how many batches to wait before logging training status')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
 					help='path to latest checkpoint (default: none)')
@@ -47,6 +45,7 @@ def main():
 
 	#Use CUDA if available
 	args.cuda = not args.no_cuda and torch.cuda.is_available()
+	print('Cuda used: ', args.cuda)
 	torch.manual_seed(args.seed)
 	if args.cuda:
 		torch.cuda.manual_seed(args.seed)
@@ -67,9 +66,15 @@ def main():
 		batch_size=args.batch_size, shuffle=False, **kwargs)
 
 	#Set up the model, optimizer and loss function
-	model = models.squeezenet.squeezenet1_1(False,num_classes = 100)
+	model = models.resnet18(pretrained= True)
+	num_ftrs = model.fc.in_features
+	model.fc = nn.Linear(num_ftrs,100)
 	criterion = nn.CrossEntropyLoss()
 	optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+	if args.cuda:
+		model.cuda()
+		criterion = criterion.cuda()
+	startEpoch = 1
 
 	#Resume from checkpoint if specified
 	if args.resume:
@@ -83,11 +88,7 @@ def main():
 				optimizer.load_state_dict(checkpoint['optimizer'])
 				print("=> loaded checkpoint (epoch {})"
 					  .format(checkpoint['epoch']))
-	if args.cuda:
-		model.cuda()
-		criterion = criterion.cuda()
 	#Train
-	startEpoch = 1
 	for epoch in range(startEpoch, startEpoch+args.epochs + 1):
 		exp_lr_scheduler(optimizer,epoch,args.lr)
 		startTime = time.clock()
@@ -145,7 +146,7 @@ def validate(valLoader,model,criterion):
 		100. * correct / len(valLoader.dataset)))
 	return correct/len(valLoader.dataset)
 
-def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=7):
+def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=105):
 	"""Decay learning rate by a factor of 0.1 every lr_decay_epoch epochs."""
 	lr = init_lr * (0.1**(epoch // lr_decay_epoch))
 
