@@ -65,18 +65,18 @@ def preprocessData():
     #If images should be resized
     resize = True
     newSize = 224
-    toFolder = False
+    toFolder = True
 
     labelcsv = csv.reader(open(os.path.join('data', 'raw', 'train/train_labels.csv')))
     #Skip header line
     next(labelcsv)
+    labelcsv = list(labelcsv)
 
     imgSize = newSize if resize else 56
     images_train = torch.ByteTensor(cutoff,imgSize,imgSize,3)
     labels_train = torch.LongTensor(cutoff)
     images_val = torch.ByteTensor(50000-cutoff,imgSize,imgSize,3)
     labels_val = torch.LongTensor(50000-cutoff)
-    toTensor = ToTensor()
     
 
     if not os.path.exists('data/processed/'):
@@ -88,9 +88,7 @@ def preprocessData():
             os.makedirs('data/processed/validate/images')
 
     i = 0
-    for entry in labelcsv:
-        if i >= cutoff:
-            break
+    for entry in labelcsv[:cutoff]:
         filename = entry[0]
         label = int(entry[1])
         img = Image.open(os.path.join('data/raw/train/images',filename+'.JPEG')).convert("RGB")
@@ -98,29 +96,29 @@ def preprocessData():
             img = img.resize((newSize,newSize),Image.BICUBIC)
         if toFolder:
             img.save('data/processed/train/images/'+filename+'.JPEG')        
-        imgnp = np.array(img.getdata(), dtype=np.uint8).reshape(imgSize, imgSize,3)
-        imgBytes = torch.ByteTensor(imgnp)
-        
-        images_train[i] = imgBytes
-        labels_train[i] = label
+        else:
+            imgnp = np.array(img.getdata(), dtype=np.uint8).reshape(imgSize, imgSize,3)
+            imgBytes = torch.ByteTensor(imgnp)        
+            images_train[i] = imgBytes
+            labels_train[i] = label
         i+=1
+    print(i)
     i = 0
-    for entry in labelcsv:
-        if i >= 50000-cutoff:
-            break
+    for entry in labelcsv[cutoff:]:
         filename = entry[0]
         label = int(entry[1])
         img = Image.open(os.path.join('data/raw/train/images',filename+'.JPEG')).convert("RGB")
         if resize:
             img = img.resize((newSize,newSize))
         if toFolder:
-            img.save('data/processed/validate/images/'+filename+'.JPEG') 
-        imgnp = np.array(img.getdata(), dtype=np.uint8).reshape(imgSize, imgSize,3)
-        imgBytes = torch.ByteTensor(imgnp)
-        images_val[i] = imgBytes
-        labels_val[i] = label
+            img.save('data/processed/validate/images/'+filename+'.JPEG')
+        else: 
+            imgnp = np.array(img.getdata(), dtype=np.uint8).reshape(imgSize, imgSize,3)
+            imgBytes = torch.ByteTensor(imgnp)
+            images_val[i] = imgBytes
+            labels_val[i] = label
         i+=1
-
+    print(i)
     if toFolder:
         with open('data/processed/train/labels.csv','w+') as csvfile:
             writer = csv.writer(csvfile)

@@ -67,6 +67,9 @@ def main():
 
 	#Set up the model, optimizer and loss function
 	model = models.resnet18(pretrained= True)
+	for param in model.parameters():
+		print(param)
+    	param.requires_grad = False
 	num_ftrs = model.fc.in_features
 	model.fc = nn.Linear(num_ftrs,100)
 	criterion = nn.CrossEntropyLoss()
@@ -94,7 +97,7 @@ def main():
 		startTime = time.clock()
 		train(trainLoader,model,criterion,optimizer,epoch)
 		endTime = time.clock()
-		print ('Time used for epoch: ',(endTime-startTime))
+		print ('Time used training for epoch: ',(endTime-startTime))
 		precision = validate(valLoader,model,criterion)
 		isBest = False
 		if precision > bestPrecision:
@@ -108,6 +111,7 @@ def main():
 			'best_precision': bestPrecision,
 			'optimizer' : optimizer.state_dict(),
 		}, isBest)
+		print()
 
 def train(trainLoader,model,criterion,optimizer,epoch):
 	model.train()
