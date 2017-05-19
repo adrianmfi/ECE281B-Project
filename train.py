@@ -136,7 +136,6 @@ def validate(valLoader,model,criterion):
 	for idx,(data, target) in enumerate(valLoader):##
 		if args.cuda:
 			data, target = data.cuda(), target.cuda()
-		target = target.long()
 		data, target = Variable(data, volatile=True), Variable(target)
 		output = model(data)
 		valLoss += criterion(output, target).data[0]
@@ -150,7 +149,7 @@ def validate(valLoader,model,criterion):
 		100. * correct / len(valLoader.dataset)))
 	return correct/len(valLoader.dataset)
 
-def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=105):
+def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=5):
 	"""Decay learning rate by a factor of 0.1 every lr_decay_epoch epochs."""
 	lr = init_lr * (0.1**(epoch // lr_decay_epoch))
 
