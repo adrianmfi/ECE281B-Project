@@ -25,7 +25,7 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
 					help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 					help='how many batches to wait before logging training status')
-parser.add_argument('--modepath', default='saved_models/model_best.pth.tar', type=str, metavar='PATH',
+parser.add_argument('--path', default='saved_models/model_best.pth.tar', type=str, metavar='PATH',
 					help='path to latest checkpoint (default: saved_models/model_best.pth.tar)')
 
 def main():
@@ -40,8 +40,8 @@ def main():
 		torch.cuda.manual_seed(args.seed)
 	#Set up the data loaders
 	kwargs = {'num_workers': args.workers, 'pin_memory': True} if args.cuda else {}
-	trainLoader = torch.utils.data.DataLoader(
-		ImageNet('data', train=True,transform = transforms.Compose([
+	testLoader = torch.utils.data.DataLoader(
+		ImageNet('data', mode='test',transform = transforms.Compose([
 			transforms.RandomHorizontalFlip(),
 			transforms.ToTensor(),
 			transforms.Normalize([0.478571, 0.44496, 0.392131],[0.26412, 0.255156, 0.269064])
@@ -55,29 +55,24 @@ def main():
 	num_ftrs = model.fc.in_features
 	model.fc = nn.Linear(num_ftrs,100)
 	criterion = nn.CrossEntropyLoss()
-	if args.cuda:
-		model.cuda()
-		criterion = criterion.cuda()
 
-	#Resume from checkpoint if specified
-	if os.path.isfile(args.resume):
-		print("=> loading checkpoint '{}'".format(args.resume))
-		checkpoint = torch.load(args.resume)
-		startEpoch = checkpoint['epoch']
-		bestPrecision = float(checkpoint['best_precision'])
-		print('Best prediction: ',bestPrecision)
+	#Load the model
+	if os.path.isfile(args.path):
+		print("=> loading checkpoint '{}'".format(args.path))
+		checkpoint = torch.load(args.path)
 		model.load_state_dict(checkpoint['state_dict'])
-		optimizer.load_state_dict(checkpoint['optimizer'])
 		print("=> loaded checkpoint (epoch {})"
 			  .format(checkpoint['epoch']))
 	else:
 		print('Unable to load model')
+	if args.cuda:
+		model.cuda()
+		criterion = criterion.cuda()
 	#Test
 	startTime = time.clock()
 	precision = test(testLoader,model,criterion)
 	endTime = time.clock()
 	print ('Test time: ',(endTime-startTime))
-	print()
 
 
 def test(testLoader,model,criterion):
@@ -93,22 +88,19 @@ def test(testLoader,model,criterion):
 	for i in range(0,100):
 		row[i+1] = 'class_{num:03d}'.format(num=i)
 	writer.writerow(row)
-	for idx,(data, target) in enumerate(valLoader):##
+	for idx,(data, target) in enumerate(testLoader):##
 		if args.cuda:
-			data, target = data.cuda(), target.cuda()
-		data, target = Variable(data, volatile=True), Variable(target)
+			data= data.cuda()
+		data= Variable(data, volatile=True)
 		output = model(data)
-		valLoss += criterion(output, target).data[0]
-		pred = output.data.max(1)[1] # get the index of the max log-probability
-		correct += pred.eq(target.data).cpu().sum()
 
-	valLoss = valLoss
-	valLoss /= len(valLoader) # loss function already averages over batch size
-	print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
-		valLoss, correct, len(valLoader.dataset),
-		100. * correct / len(valLoader.dataset)))
+		for pred,label in zip(output,target):
+			row = ['' for i in range(101)]
+			row[0] = label
+			row[1:] =list(pred.cpu().data)
+			writer.writerow(row) 
 	file.close()
 
 if __name__ == '__main__':
-	#main()
+	main()
 

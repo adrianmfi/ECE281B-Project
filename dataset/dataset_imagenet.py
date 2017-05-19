@@ -5,40 +5,55 @@ from PIL import Image
 import numpy as np
 import csv
 import os
+import glob
 import operator 
 cutoff = 40000
 
 class ImageNet(data.Dataset):
+
     raw_folder = 'raw'
     processed_folder = 'processed'
-    def __init__(self, root, train=True, transform=None, target_transform=None,fromFolder = True):
+    def __init__(self, root, mode='train', transform=None, target_transform=None,fromFolder = True):
         self.root = root
         self.transform = transform
         self.target_transform = target_transform
-        self.train = train  # training set or validation set
+        self.mode = mode  # training, test or validation set
         self.fromFolder = fromFolder
         self.trainLen = cutoff
         self.valLen = 50000-cutoff
         if self.fromFolder:
-            if self.train:
+            if self.mode == 'train':
                 self.labelcsv = csv.reader(open(os.path.join(self.root, self.processed_folder, 'train/labels.csv')))
-            else:
+                self.labelcsv = sorted(self.labelcsv,key=operator.itemgetter(0))
+            elif self.mode == 'validate':
                 self.labelcsv = csv.reader(open(os.path.join(self.root, self.processed_folder, 'validate/labels.csv')))
-            self.labelcsv = sorted(self.labelcsv,key=operator.itemgetter(0))
-        else:    
-            if self.train:
-                self.data, self.labels = torch.load(root+'/processed/train.pt')
+                self.labelcsv = sorted(self.labelcsv,key=operator.itemgetter(0))
+            elif self.mode == 'test':
+                self.imgurls = glob.glob(os.path.join(self.root,self.processed_folder, 'test/images/')+'*.JPEG')
             else:
+                print('unknown mode')
+        else:    
+            if self.mode == 'train':
+                self.data, self.labels = torch.load(root+'/processed/train.pt')
+            elif self.mode == 'validate':
                 self.data, self.labels = torch.load(root+'/processed/validate.pt')
-
+            elif self.mode == 'test':
+                pass
+            else:
+                print ('unknown mode')
     def __getitem__(self, index):
         if self.fromFolder:
-            url = self.labelcsv[index][0]
-            target = int(self.labelcsv[index][1])
-            if self.train:
+            if self.mode == 'train':
+                url = self.labelcsv[index][0]
+                target = int(self.labelcsv[index][1])
                 img = Image.open(self.root+'/'+self.processed_folder+'/train/images/'+url+'.JPEG')
-            else:
+            elif self.mode == 'validate':
+                url = self.labelcsv[index][0]
+                target = int(self.labelcsv[index][1])
                 img = Image.open(self.root+'/'+self.processed_folder+'/validate/images/'+url+'.JPEG')
+            else:
+                target = self.imgurls[index].lstrip(os.path.join(self.root,self.processed_folder, 'test/images/')).rstrip('.JPEG')
+                img = Image.open(self.imgurls[index])
         else:        
             img,target = self.data[index], self.labels[index]
             img = Image.fromarray(img.numpy())
@@ -49,10 +64,12 @@ class ImageNet(data.Dataset):
         return img, target
 
     def __len__(self):
-        if self.train:
+        if self.mode == 'train':
             return self.trainLen
-        else:
+        elif self.mode == 'validate':
             return self.valLen
+        else:
+            return 10000
 
 def preprocessData():
     #Splits the training set and its corresponding labels
@@ -86,6 +103,8 @@ def preprocessData():
             os.makedirs('data/processed/train/images')
         if not os.path.exists('data/processed/validate'):
             os.makedirs('data/processed/validate/images')
+        if not os.path.exists('data/processed/test'):
+            os.makedirs('data/processed/test/images')
 
     i = 0
     for entry in labelcsv[:cutoff]:
@@ -120,6 +139,10 @@ def preprocessData():
         i+=1
     print(i)
     if toFolder:
+        for url in glob.glob('data/raw/test/images/*.JPEG'):
+            img = Image.open(url).convert("RGB")
+            img = img.resize((newSize,newSize))
+            img.save('data/processed/test/images')
         with open('data/processed/train/labels.csv','w+') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerows(labelcsv[0:cutoff])
@@ -133,7 +156,13 @@ def preprocessData():
             torch.save((images_val,labels_val), f)
     print('Done!')
 if __name__ == '__main__':
-    preprocessData()
+    if not os.path.exists('data/processed/test'):
+        os.makedirs('data/processed/test/images')
+    for url in glob.glob('data/raw/test/images/*.JPEG'):
+        img = Image.open(url).convert("RGB")
+        img = img.resize((224,224))
+        img.save('data/processed/test/images/'+url.lstrip('data/raw/test/images'))
+    #preprocessData()
     #n = ImageNet('data')
     #i1 = n[0]
     #i2 = n[1]

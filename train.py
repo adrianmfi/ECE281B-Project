@@ -52,14 +52,14 @@ def main():
 	#Set up the data loaders
 	kwargs = {'num_workers': args.workers, 'pin_memory': True} if args.cuda else {}
 	trainLoader = torch.utils.data.DataLoader(
-		ImageNet('data', train=True,transform = transforms.Compose([
+		ImageNet('data', mode='train',transform = transforms.Compose([
 			transforms.RandomHorizontalFlip(),
 			transforms.ToTensor(),
 			transforms.Normalize([0.478571, 0.44496, 0.392131],[0.26412, 0.255156, 0.269064])
 			])), 
 		batch_size=args.batch_size, shuffle=True, **kwargs)
 	valLoader = torch.utils.data.DataLoader(
-		ImageNet('data', train=False, transform = transforms.Compose([
+		ImageNet('data', mode='validate', transform = transforms.Compose([
  			transforms.ToTensor(),
 			transforms.Normalize([0.478571, 0.44496, 0.392131],[0.26412, 0.255156, 0.269064])
 			])),
@@ -67,9 +67,6 @@ def main():
 
 	#Set up the model, optimizer and loss function
 	model = models.resnet18(pretrained= True)
-	for param in model.parameters():
-		print(param)
-    	param.requires_grad = False
 	num_ftrs = model.fc.in_features
 	model.fc = nn.Linear(num_ftrs,100)
 	criterion = nn.CrossEntropyLoss()
