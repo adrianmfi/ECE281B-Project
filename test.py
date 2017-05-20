@@ -42,19 +42,17 @@ def main():
 	kwargs = {'num_workers': args.workers, 'pin_memory': True} if args.cuda else {}
 	testLoader = torch.utils.data.DataLoader(
 		ImageNet('data', mode='test',transform = transforms.Compose([
-			transforms.RandomHorizontalFlip(),
 			transforms.ToTensor(),
 			transforms.Normalize([0.478571, 0.44496, 0.392131],[0.26412, 0.255156, 0.269064])
 			])), 
-		batch_size=args.batch_size, shuffle=True, **kwargs)
+		batch_size=args.batch_size, shuffle=False, **kwargs)
 
-	#Set up the model, optimizer and loss function
+	#Set up the model
 	model = models.resnet18(pretrained= True)
 	for param in model.parameters():
 		param.requires_grad = False
 	num_ftrs = model.fc.in_features
 	model.fc = nn.Linear(num_ftrs,100)
-	criterion = nn.CrossEntropyLoss()
 
 	#Load the model
 	if os.path.isfile(args.path):
@@ -67,15 +65,14 @@ def main():
 		print('Unable to load model')
 	if args.cuda:
 		model.cuda()
-		criterion = criterion.cuda()
 	#Test
 	startTime = time.clock()
-	precision = test(testLoader,model,criterion)
+	precision = test(testLoader,model)
 	endTime = time.clock()
 	print ('Test time: ',(endTime-startTime))
 
 
-def test(testLoader,model,criterion):
+def test(testLoader,model):
 	model.eval()
 	valLoss = 0
 	correct = 0
@@ -88,11 +85,13 @@ def test(testLoader,model,criterion):
 	for i in range(0,100):
 		row[i+1] = 'class_{num:03d}'.format(num=i)
 	writer.writerow(row)
+	
 	for idx,(data, target) in enumerate(testLoader):##
 		if args.cuda:
 			data= data.cuda()
 		data= Variable(data, volatile=True)
 		output = model(data)
+		output = F.softmax(output)
 
 		for pred,label in zip(output,target):
 			row = ['' for i in range(101)]

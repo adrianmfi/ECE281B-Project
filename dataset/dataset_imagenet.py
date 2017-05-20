@@ -52,7 +52,7 @@ class ImageNet(data.Dataset):
                 target = int(self.labelcsv[index][1])
                 img = Image.open(self.root+'/'+self.processed_folder+'/validate/images/'+url+'.JPEG')
             else:
-                target = self.imgurls[index].lstrip(os.path.join(self.root,self.processed_folder, 'test/images/')).rstrip('.JPEG')
+                target = os.path.split(self.imgurls[index])[-1].rstrip('.JPEG')
                 img = Image.open(self.imgurls[index])
         else:        
             img,target = self.data[index], self.labels[index]
@@ -160,8 +160,8 @@ if __name__ == '__main__':
         os.makedirs('data/processed/test/images')
     for url in glob.glob('data/raw/test/images/*.JPEG'):
         img = Image.open(url).convert("RGB")
-        img = img.resize((224,224))
-        img.save('data/processed/test/images/'+url.lstrip('data/raw/test/images'))
+        img = img.resize((224,224),Image.BICUBIC)
+        img.save('data/processed/test/images/'+url[21:])
     #preprocessData()
     #n = ImageNet('data')
     #i1 = n[0]
