@@ -88,6 +88,7 @@ ENV/
 # Rope project settings
 .ropeproject
 
-#Dataset and saved models
+#Dataset, submissions and saved models
 data/
 saved_models/
+submissions/
