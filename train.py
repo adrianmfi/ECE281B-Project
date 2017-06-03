@@ -68,9 +68,13 @@ def main():
 	#Set up the model, optimizer and loss function
 	model = models.resnet18(pretrained= True)
 	num_ftrs = model.fc.in_features
+	for param in model.parameters():
+		param.requires_grad = False
 	model.fc = nn.Linear(num_ftrs,100)
 	criterion = nn.CrossEntropyLoss()
-	optimizer = optim.Adam(model.parameters(), lr=args.lr)
+	#optimizer = optim.Adam(model.parameters(), lr=args.lr)
+	optimizer = optim.SGD(model.parameters(), lr=args.lr,momentum=args.momentum)
+	
 	if args.cuda:
 		model.cuda()
 		criterion = criterion.cuda()
@@ -162,7 +166,7 @@ def validate(valLoader,model,criterion):
 		100. * correct / len(valLoader.dataset)))
 	return correct/len(valLoader.dataset), valLoss
 
-def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=5):
+def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=20):
 	"""Decay learning rate by a factor of 0.1 every lr_decay_epoch epochs."""
 	lr = init_lr * (0.1**(epoch // lr_decay_epoch))
 
