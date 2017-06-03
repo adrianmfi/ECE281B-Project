@@ -73,7 +73,8 @@ def main():
 	model.fc = nn.Linear(num_ftrs,100)
 	criterion = nn.CrossEntropyLoss()
 	#optimizer = optim.Adam(model.parameters(), lr=args.lr)
-	optimizer = optim.SGD(model.parameters(), lr=args.lr,momentum=args.momentum)
+	#optimizer = optim.SGD(model.parameters(), lr=args.lr,momentum=args.momentum)
+	optimizer = optim.SGD(model.fc.parameters(), lr=args.lr,momentum=args.momentum)
 	
 	if args.cuda:
 		model.cuda()
