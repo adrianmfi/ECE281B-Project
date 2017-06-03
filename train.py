@@ -89,29 +89,43 @@ def main():
 				print("=> loaded checkpoint (epoch {})"
 					  .format(checkpoint['epoch']))
 	#Train
+	testAcc = []
+	testLoss = []
+	valAcc = []
+	valLoss = []
 	for epoch in range(startEpoch, startEpoch+args.epochs + 1):
 		exp_lr_scheduler(optimizer,epoch,args.lr)
 		startTime = time.clock()
-		train(trainLoader,model,criterion,optimizer,epoch)
+		tAcc,tLoss = train(trainLoader,model,criterion,optimizer,epoch)
 		endTime = time.clock()
 		print ('Time used training for epoch: ',(endTime-startTime))
-		precision = validate(valLoader,model,criterion)
+		vAcc,vLoss = validate(valLoader,model,criterion)
 		isBest = False
-		if precision > bestPrecision:
-			bestPrecision = precision
+		if vAcc > bestPrecision:
+			bestPrecision = vAcc
 			isBest = True
-		print('Precision:', precision)
+		print('Precision:', vAcc)
 		print('Best precision:', bestPrecision)
+		testAcc.append(tAcc)
+		testLoss.append(tLoss)
+		valAcc.append(vAcc)
+		valLoss.append(vLoss)
 		saveCheckpoint({
 			'epoch': epoch + 1,
 			'state_dict': model.state_dict(),
 			'best_precision': bestPrecision,
 			'optimizer' : optimizer.state_dict(),
+			'testAcc' : testAcc,
+			'testLoss' : testLoss,
+			'valAcc' : valAcc,
+			'valLoss' : valLoss,
 		}, isBest)
 		print()
 
 def train(trainLoader,model,criterion,optimizer,epoch):
 	model.train()
+	trainLoss = 0
+	correct = 0
 	for batchIdx, (data, target) in enumerate(trainLoader):
 		if args.cuda:
 			data, target = data.cuda(), target.cuda()
@@ -119,13 +133,17 @@ def train(trainLoader,model,criterion,optimizer,epoch):
 		optimizer.zero_grad() 
 		output = model(data)
 		loss = criterion(output, target)
+		trainLoss += loss.data[0]
+		pred = output.data.max(1)[1] # get the index of the max log-probability
+		correct += pred.eq(target.data).cpu().sum()
 		loss.backward()
 		optimizer.step()
 		if batchIdx % args.log_interval == 0:
 			print('\nTrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
 				epoch, batchIdx * len(data), len(trainLoader.dataset),
 				100. * batchIdx / len(trainLoader), loss.data[0]))
-
+	trainLoss /= len(trainLoader) # loss function already averages over batch size
+	return correct/len(trainLoader.dataset), trainLoss
 def validate(valLoader,model,criterion):
 	model.eval()
 	valLoss = 0
@@ -138,13 +156,11 @@ def validate(valLoader,model,criterion):
 		valLoss += criterion(output, target).data[0]
 		pred = output.data.max(1)[1] # get the index of the max log-probability
 		correct += pred.eq(target.data).cpu().sum()
-
-	valLoss = valLoss
 	valLoss /= len(valLoader) # loss function already averages over batch size
 	print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)'.format(
 		valLoss, correct, len(valLoader.dataset),
 		100. * correct / len(valLoader.dataset)))
-	return correct/len(valLoader.dataset)
+	return correct/len(valLoader.dataset), valLoss
 
 def exp_lr_scheduler(optimizer,epoch, init_lr, lr_decay_epoch=5):
 	"""Decay learning rate by a factor of 0.1 every lr_decay_epoch epochs."""
