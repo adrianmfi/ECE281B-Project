@@ -81,6 +81,10 @@ def main():
 		criterion = criterion.cuda()
 	startEpoch = 1
 
+	testAcc = []
+	testLoss = []
+	valAcc = []
+	valLoss = []
 	#Resume from checkpoint if specified
 	if args.resume:
 			if os.path.isfile(args.resume):
@@ -91,13 +95,14 @@ def main():
 				print('Best prediction: ',bestPrecision)
 				model.load_state_dict(checkpoint['state_dict'])
 				optimizer.load_state_dict(checkpoint['optimizer'])
+				testAcc = checkpoint['testAcc']
+				testLoss = checkpoint['testLoss']
+				valAcc =  checkpoint['valAcc']
+				valLoss = checkpoint['valLoss']
+
 				print("=> loaded checkpoint (epoch {})"
 					  .format(checkpoint['epoch']))
 	#Train
-	testAcc = []
-	testLoss = []
-	valAcc = []
-	valLoss = []
 	for epoch in range(startEpoch, startEpoch+args.epochs + 1):
 		exp_lr_scheduler(optimizer,epoch,args.lr)
 		startTime = time.clock()
